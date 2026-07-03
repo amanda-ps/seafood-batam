@@ -1,0 +1,50 @@
+[
+    {
+        "id": 1,
+        "display_name": "Admin",
+        "nama_lengkap": "Admin",
+        "username": "admin",
+        "whatsapp": "",
+        "phone": "",
+        "email": "admin@batamseafood.com",
+        "password_hash": "$2y$10$m2JBrTEjhTjDEMiYgJs9aOa6HjtyjmI3WWj9swtOA9lLM4sE8bey6",
+        "role": "admin",
+        "avatar": null,
+        "jenis_kelamin": "Laki-laki",
+        "status": "active",
+        "gender": "male"
+    },
+    {
+        "id": 2,
+        "display_name": "Amanda",
+        "nama_lengkap": "Amanda",
+        "username": "amanda23",
+        "whatsapp": "081270632112",
+        "phone": "081270632112",
+        "email": "ps.amanda04@gmail.com",
+        "password_hash": "$2y$10$vEoxy5tFKcL0guhLmkskJOj90xCLkzsttB0m47zAyEler73dwBJAe",
+        "role": "user",
+        "avatar": "",
+        "jenis_kelamin": "Perempuan",
+        "status": "active",
+        "gender": "female",
+        "bio": "",
+        "reset_token": "d7ca36f6bf5953197b6926f0cb8ce532",
+        "reset_expires": "2026-07-03 13:41:09"
+    },
+    {
+        "id": 3,
+        "display_name": "Siti Maulidya",
+        "nama_lengkap": "Siti Maulidya",
+        "username": "maulidya13",
+        "whatsapp": "081270632112",
+        "phone": "081270632112",
+        "email": "sitimaulidya@gmail.com",
+        "password_hash": "$2y$10$avR73xf7Fr.C5DeJb\/Fsf.LIm32Hpyw\/HY8nMAsgvxpbVZdNRBvz2",
+        "role": "user",
+        "avatar": null,
+        "jenis_kelamin": "Perempuan",
+        "status": "active",
+        "gender": "female"
+    }
+]

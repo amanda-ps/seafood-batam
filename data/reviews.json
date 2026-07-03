@@ -1,0 +1,31 @@
+[
+    {
+        "id": 1,
+        "user_id": 2,
+        "restaurant_id": 21,
+        "rating": 4,
+        "comment": "bagus, sesuai gambar",
+        "photos": [],
+        "date": "2026-04-17 13:14:03"
+    },
+    {
+        "id": 2,
+        "user_id": 2,
+        "restaurant_id": 11,
+        "rating": 4,
+        "comment": "bagus dan nyaman",
+        "media": [],
+        "photos": [],
+        "date": "2026-06-30 09:24:34"
+    },
+    {
+        "id": 3,
+        "user_id": 2,
+        "restaurant_id": 64,
+        "rating": 4,
+        "comment": "tempatnya nyaman dan bagus untuk kumpul makan bareng keluarga",
+        "media": [],
+        "photos": [],
+        "date": "2026-07-02 12:35:22"
+    }
+]
