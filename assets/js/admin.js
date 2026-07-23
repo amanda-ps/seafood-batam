@@ -60,12 +60,12 @@ function buildVisitChart(labels, data) {
                 x: {
                     grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' },
                     ticks: { color: isDark ? '#8B949E' : '#9CA3AF', font: { size: 11 } },
-                    border: { dash: [4,4] }
+                    border: { dash: [4, 4] }
                 },
                 y: {
                     grid: { color: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' },
                     ticks: { color: isDark ? '#8B949E' : '#9CA3AF', font: { size: 11 } },
-                    border: { dash: [4,4] },
+                    border: { dash: [4, 4] },
                     beginAtZero: true
                 }
             }
@@ -75,49 +75,85 @@ function buildVisitChart(labels, data) {
 
 // ── Chart period data ─────────────────────────────────────
 const chartData = {
-    weekly:  {
+    weekly: {
         labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
-        data:   [62, 78, 85, 70, 94, 138, 112]
+        data: [3, 5, 4, 6, 4, 0, 0]
     },
     monthly: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
-        data:   [820, 940, 870, 1020, 980, 1150, 1340, 1290, 1100, 1210, 1380, 1560]
+        labels: ['Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+        data: [14, 23, 22, 0, 0, 0, 0, 0]
     },
     yearly: {
-        labels: ['2021', '2022', '2023', '2024', '2025'],
-        data:   [4200, 7800, 12400, 18900, 24300]
+        labels: ['2026'],
+        data: [59]
     }
 };
 
 let activePeriod = 'weekly';
+
+function getActiveChartData() {
+    if (window.realtimeChartData && window.realtimeChartData[activePeriod]) {
+        return window.realtimeChartData[activePeriod];
+    }
+    return chartData[activePeriod];
+}
 
 function switchChartPeriod(period) {
     activePeriod = period;
     document.querySelectorAll('.adm-chart-tab').forEach(t => {
         t.classList.toggle('active', t.dataset.period === period);
     });
-    buildVisitChart(chartData[period].labels, chartData[period].data);
+    const source = (window.realtimeChartData && window.realtimeChartData[period]) ? window.realtimeChartData[period] : chartData[period];
+    buildVisitChart(source.labels, source.data);
 }
 
 // ── Init on DOM ready ─────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     // Init chart if canvas exists
     if (document.getElementById('visit-chart')) {
-        buildVisitChart(chartData.weekly.labels, chartData.weekly.data);
+        const source = (window.realtimeChartData && window.realtimeChartData.weekly) ? window.realtimeChartData.weekly : chartData.weekly;
+        buildVisitChart(source.labels, source.data);
     }
 
     // Menu row logic (add/edit restaurant)
     initMenuRows();
+
+    // Custom Indonesian validation messages for required and typed inputs
+    document.addEventListener('invalid', function (e) {
+        const target = e.target;
+        if (target.hasAttribute('required') || target.validity.typeMismatch) {
+            target.setCustomValidity("");
+            if (target.validity.valueMissing) {
+                target.setCustomValidity("Harap isi bagian ini.");
+            } else if (target.validity.typeMismatch) {
+                if (target.type === 'url') {
+                    target.setCustomValidity("Harap masukkan URL yang valid.");
+                } else if (target.type === 'email') {
+                    target.setCustomValidity("Harap masukkan alamat email yang valid.");
+                }
+            }
+        }
+    }, true);
+
+    document.addEventListener('input', function (e) {
+        e.target.setCustomValidity("");
+    });
+
+    document.addEventListener('change', function (e) {
+        if (e.target.tagName === 'SELECT') {
+            e.target.setCustomValidity("");
+        }
+    });
 });
 
 // ── Menu rows (restaurant form) ───────────────────────────
 function initMenuRows() {
     const container = document.getElementById('adm-menus-container');
-    const addBtn    = document.getElementById('adm-add-menu-btn');
+    const addBtn = document.getElementById('adm-add-menu-btn');
     if (!container || !addBtn) return;
 
     addBtn.addEventListener('click', addMenuRow);
-    container.addEventListener('click', function(e) {
+    container.addEventListener('click', function (e) {
         const removeBtn = e.target.closest('.adm-menu-remove-btn');
         if (removeBtn) {
             const row = removeBtn.closest('.adm-menu-row');
@@ -159,10 +195,10 @@ function addMenuRow(nameVal = '', priceVal = '', descVal = '') {
 
 function escHtml(str) {
     return String(str)
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;');
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 }
 
 // ── Toggle user status via AJAX ───────────────────────────
@@ -177,19 +213,28 @@ async function toggleUserStatus(userId, newStatus) {
         newStatus === 'active' ? 'Aktifkan' : 'Nonaktifkan',
         async () => {
             try {
-                const res = await fetch('/admin/toggle-user-status.php', {
+                const res = await fetch('toggle-user-status.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_id: userId, status: newStatus })
                 });
-                const data = await res.json();
+                const text = await res.text();
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (err) {
+                    console.error('Invalid JSON response:', text);
+                    admToast('Terjadi kesalahan pada server.', 'error');
+                    return;
+                }
                 if (data.success) {
                     admToast(data.message, 'success');
                     setTimeout(() => location.reload(), 800);
                 } else {
                     admToast(data.message || 'Gagal mengubah status.', 'error');
                 }
-            } catch(e) {
+            } catch (e) {
+                console.error(e);
                 admToast('Koneksi gagal.', 'error');
             }
         }
@@ -205,6 +250,13 @@ function confirmDelete(formId, title, msg) {
         'adm-btn-outline-red',
         'fa-solid fa-trash',
         'Hapus',
-        () => document.getElementById(formId)?.submit()
+        () => {
+            const form = document.getElementById(formId);
+            if (form) {
+                form.submit();
+            } else {
+                console.error('Form not found:', formId);
+            }
+        }
     );
 }

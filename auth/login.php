@@ -17,11 +17,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($users as $u) {
         if ($u['email'] === $email || $u['username'] === $email) {
             if (password_verify($password, $u['password_hash'])) {
-                $_SESSION['id_user'] = $u['id'];
-                $_SESSION['role']    = $u['role'];
-                $_SESSION['success'] = 'Selamat datang kembali, ' . $u['username'] . '!';
-                session_write_close();
-                redirect($u['role'] === 'admin' ? '/admin/index.php' : '/index.php');
+                if (isset($u['status']) && ($u['status'] === 'inactive' || $u['status'] === 'nonaktif' || $u['status'] === '0' || $u['status'] === 0 || $u['status'] === false)) {
+                    $error = 'Akun Anda telah dinonaktifkan oleh admin.';
+                } else {
+                    $_SESSION['id_user'] = $u['id'];
+                    $_SESSION['role']    = $u['role'];
+                    $_SESSION['success'] = 'Selamat datang kembali, ' . $u['username'] . '!';
+                    session_write_close();
+                    redirect($u['role'] === 'admin' ? '/admin/index.php' : '/index.php');
+                }
             } else {
                 $error = 'Kata sandi tidak valid.';
             }
@@ -197,8 +201,8 @@ $theme = $_COOKIE['theme'] ?? 'light';
 
                 <div class="form-group">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <label class="form-label" for="login-password" style="margin:0;">Kata Sandi</label>
-                        <a href="<?= BASE_URL ?>/auth/forgot-password.php" style="font-size:0.82rem; color:var(--clr-orange); font-weight:600; text-decoration:none;">Lupa Kata Sandi?</a>
+                        <label class="form-label" for="login-password" style="margin-bottom:0;">Kata Sandi</label>
+                        <a href="forgot-password.php" style="font-size:0.8rem; color:var(--clr-orange); text-decoration:none; font-weight:600;">Lupa Kata Sandi?</a>
                     </div>
                     <div class="pw-wrap">
                         <input type="password" name="password" id="login-password" class="form-control"
@@ -250,5 +254,10 @@ function togglePwd(inputId, iconId) {
     if (t) document.documentElement.setAttribute('data-theme', t.split('=')[1]);
 })();
 </script>
+<script>
+    const BASE_URL = '<?= BASE_URL ?>';
+    window.BASE_URL = '<?= BASE_URL ?>';
+</script>
+<script src="<?= BASE_URL ?>/assets/js/app.js"></script>
 </body>
 </html>

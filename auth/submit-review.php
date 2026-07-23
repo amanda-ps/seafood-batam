@@ -14,29 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $current_user_id = $_SESSION['id_user'] ?? $_SESSION['user_id'] ?? 0;
-    
-    // Check if user already reviewed in MySQL or JSON
-    $already = false;
-    try {
-        $pdo = get_db();
-        if ($pdo) {
-            $stmt = $pdo->prepare("SELECT id_ulasan FROM ulasan WHERE id_restoran = ? AND id_user = ?");
-            $stmt->execute([$restaurant_id, $current_user_id]);
-            if ($stmt->fetchColumn()) $already = true;
-        }
-    } catch (Throwable $e) {}
 
-    $reviews = read_json('reviews.json');
-    if (!$already) {
-        foreach($reviews as $r) {
-            if ($r['restaurant_id'] == $restaurant_id && $r['user_id'] == $current_user_id) {
-                $already = true; break;
-            }
-        }
-    }
-
-    if ($already) {
-        $_SESSION['error'] = 'Anda sudah mengulas restoran ini sebelumnya.';
+    // 1. Cek kata terlarang (SARA/Kasar & Leetspeak/Obfuscation)
+    if (cek_kata_terlarang($comment)) {
+        $_SESSION['error'] = 'Ulasan gagal dikirim: Komentar tidak layak atau mengandung unsur SARA.';
         redirect('/restaurant-detail.php?id=' . $restaurant_id . '#reviews');
     }
 
@@ -72,14 +53,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $new_name   = uniqid('rev_') . '.' . $ext;
                 $target     = $target_dir . $new_name;
                 if (move_uploaded_file($files['tmp_name'][$i], $target)) {
+                    $media_url = BASE_URL . '/assets/images/reviews/' . $new_name;
                     $uploaded_media[] = [
                         'type' => $type,
-                        'path' => '/assets/images/reviews/' . $new_name
+                        'path' => $media_url
                     ];
                 }
             }
         }
     }
+
+    // Load existing reviews from JSON for fallback consistency
+    $reviews = read_json('reviews.json');
 
     $new_review = [
         'id'            => empty($reviews) ? 1 : max(array_column($reviews, 'id')) + 1,
@@ -98,7 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Simpan ulasan baru langsung ke MySQL (tabel ulasan dan foto_ulasan)
     try {
-        if (isset($pdo) && $pdo) {
+        $pdo = get_db();
+        if ($pdo) {
             $ins = $pdo->prepare("INSERT INTO ulasan (id_user, id_restoran, rating, isi_ulasan, tanggal_ulasan) VALUES (?, ?, ?, ?, NOW())");
             $ins->execute([$current_user_id, $restaurant_id, $rating, $comment]);
             $new_id = $pdo->lastInsertId();
@@ -125,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach($restaurants as &$res) {
         if ($res['id'] == $restaurant_id) {
             $new_count  = $res['reviews_count'] + 1;
-            $new_rating = (($res['rating'] * $res['reviews_count']) + $rating) / $new_count;
+            $new_rating = (($res['rating'] * ($res['reviews_count'] - 1)) + $rating) / $new_count;
             $res['rating']        = round($new_rating, 1);
             $res['reviews_count'] = $new_count;
             break;

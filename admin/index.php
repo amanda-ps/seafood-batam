@@ -1,12 +1,14 @@
 <?php
 require_once __DIR__ . '/../includes/admin-header.php';
+catat_kunjungan();
 
 $restaurants    = get_restaurants();
 $users          = get_users();
-$reviews        = read_json('reviews.json');
+$reviews        = get_reviews();
+$visit_stats    = get_realtime_visit_stats();
 
 $total_restaurants = count($restaurants);
-$total_users       = count(array_filter($users, fn($u) => $u['role'] !== 'admin'));
+$total_users       = count(array_filter($users, fn($u) => $u['role'] !== 'admin' && ($u['status'] ?? 'active') === 'active'));
 $total_reviews     = count($reviews);
 
 // Sort by rating for top table
@@ -161,7 +163,10 @@ $icon_colors = ['#4CAF50','#FF9800','#2196F3','#9C27B0','#F44336','#00BCD4','#FF
                 <?php endforeach; ?>
             </tbody>
         </table>
-    </div>
 </div>
+
+<script>
+window.realtimeChartData = <?= json_encode($visit_stats) ?>;
+</script>
 
 <?php require_once __DIR__ . '/../includes/admin-footer.php'; ?>

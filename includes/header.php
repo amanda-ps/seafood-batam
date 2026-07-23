@@ -1,11 +1,11 @@
 <?php
 require_once __DIR__ . '/functions.php';
+catat_kunjungan();
 $districts = ['Batam Kota', 'Lubuk Baja', 'Batu Ampar', 'Bengkong', 'Sekupang', 'Nongsa', 'Sagulung', 'Batu Aji', 'Belakang Padang', 'Bulang', 'Galang', 'Sei Beduk'];
-$theme = $_COOKIE['theme'] ?? 'light';
 $current_path = $_SERVER['PHP_SELF'] ?? '';
 ?>
 <!DOCTYPE html>
-<html lang="id" data-theme="<?= htmlspecialchars($theme) ?>">
+<html lang="id" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,10 +16,13 @@ $current_path = $_SERVER['PHP_SELF'] ?? '';
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+    <meta name="referrer" content="no-referrer">
     <script>
         const BASE_URL = '<?= BASE_URL ?>';
         window.BASE_URL = '<?= BASE_URL ?>';
+        window.IS_LOGGED_IN = <?= is_logged_in() ? 'true' : 'false' ?>;
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 <body>
 <div id="toast-container"></div>
@@ -51,9 +54,7 @@ $current_path = $_SERVER['PHP_SELF'] ?? '';
                     Daftar
                 </a>
             <?php endif; ?>
-            <button id="theme-toggle" class="icon-btn" aria-label="Toggle Dark Mode" title="Ganti Tema">
-                <i class="fa-solid fa-moon" id="theme-icon"></i>
-            </button>
+
         </nav>
 
         <button class="mobile-menu-btn icon-btn" id="mobile-toggle" aria-label="Buka Menu">

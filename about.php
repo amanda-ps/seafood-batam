@@ -145,6 +145,20 @@ details[open] .faq-chevron { transform: rotate(180deg); }
     box-shadow: var(--shadow-sm);
     transform: translateY(-2px);
 }
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    max-width: 1040px;
+    margin: 20px auto;
+}
+
+@media (max-width: 860px) {
+    .contact-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 
 <!-- Hero -->
@@ -256,7 +270,7 @@ details[open] .faq-chevron { transform: rotate(180deg); }
             <h2>Hubungi Kami</h2>
             <p style="color:var(--text-muted); margin-top:10px; font-size:0.9rem;">Ada pertanyaan lebih lanjut? Kami siap membantu.</p>
         </div>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px; max-width:700px; margin:20px auto; justify-content:center;">
+        <div class="contact-grid">
             <?php
             $contacts = [
                 ['icon'=>'fa-envelope',  'color'=>'var(--clr-orange)', 'bg'=>'rgba(249,115,22,0.10)',

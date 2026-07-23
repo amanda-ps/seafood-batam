@@ -15,10 +15,9 @@ $page_titles = [
 ];
 $page_title = $page_titles[$current_page] ?? 'Admin Panel';
 
-$theme = $_COOKIE['theme'] ?? 'light';
 ?>
 <!DOCTYPE html>
-<html lang="id" data-theme="<?= htmlspecialchars($theme) ?>">
+<html lang="id" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -84,10 +83,7 @@ $theme = $_COOKIE['theme'] ?? 'light';
             <a href="<?= BASE_URL ?>/index.php" class="adm-nav-item" style="margin-bottom:6px; font-size:0.8rem;">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i> Lihat Situs
             </a>
-            <button class="adm-theme-toggle" onclick="toggleAdmTheme()" id="adm-theme-btn">
-                <i class="fa-solid fa-moon" id="adm-theme-icon"></i>
-                <span id="adm-theme-label">Mode Gelap</span>
-            </button>
+
             <div class="adm-divider" style="margin: 8px 0;"></div>
             <a href="<?= BASE_URL ?>/auth/logout.php" class="adm-nav-item danger" style="margin-top:2px;">
                 <i class="fa-solid fa-right-from-bracket"></i> Keluar
@@ -123,4 +119,3 @@ if (isset($_SESSION['error'])) {
     echo '<div class="adm-alert adm-alert-error"><i class="fa-solid fa-circle-exclamation"></i>' . htmlspecialchars($_SESSION['error']) . '</div>';
     unset($_SESSION['error']);
 }
-?>

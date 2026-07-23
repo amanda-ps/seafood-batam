@@ -39,15 +39,15 @@ function clean(string $value): string {
 $id       = isset($_GET['id'])       ? (int)   $_GET['id']         : 0;
 $q        = isset($_GET['q'])        ? clean(  $_GET['q'])          : '';
 $district = isset($_GET['district']) ? clean(  $_GET['district'])   : '';
-$sort     = isset($_GET['sort'])     ? clean(  $_GET['sort'])       : 'rating';
-$order    = isset($_GET['order'])    ? strtolower(clean($_GET['order'])) : 'desc';
+$sort     = isset($_GET['sort'])     ? clean(  $_GET['sort'])       : 'id';
+$order    = isset($_GET['order'])    ? strtolower(clean($_GET['order'])) : 'asc';
 $limit    = isset($_GET['limit'])    ? min((int)$_GET['limit'], 200) : 200;
 $offset   = isset($_GET['offset'])   ? max((int)$_GET['offset'], 0)  : 0;
 
 $allowed_sorts  = ['rating', 'reviews_count', 'name', 'id'];
 $allowed_orders = ['asc', 'desc'];
-if (!in_array($sort, $allowed_sorts))   $sort  = 'rating';
-if (!in_array($order, $allowed_orders)) $order = 'desc';
+if (!in_array($sort, $allowed_sorts))   $sort  = 'id';
+if (!in_array($order, $allowed_orders)) $order = 'asc';
 
 /* ─── Coba koneksi MySQL; fallback ke JSON jika gagal ─── */
 $use_json_fallback = false;
@@ -102,10 +102,12 @@ if ($use_json_fallback || $pdo === null) {
     usort($restaurants, function($a, $b) use ($sort, $order) {
         $va = $sort === 'reviews_count' ? ($a['reviews_count'] ?? 0)
             : ($sort === 'name'         ? ($a['name'] ?? '')
-                                        : ($a['rating'] ?? 0));
+            : ($sort === 'id'           ? ($a['id'] ?? 0)
+                                        : ($a['rating'] ?? 0)));
         $vb = $sort === 'reviews_count' ? ($b['reviews_count'] ?? 0)
             : ($sort === 'name'         ? ($b['name'] ?? '')
-                                        : ($b['rating'] ?? 0));
+            : ($sort === 'id'           ? ($b['id'] ?? 0)
+                                        : ($b['rating'] ?? 0)));
         return $order === 'asc' ? ($va <=> $vb) : ($vb <=> $va);
     });
 
@@ -179,10 +181,12 @@ try {
     usort($all_restaurants, function($a, $b) use ($sort, $order) {
         $va = $sort === 'reviews_count' ? ($a['reviews_count'] ?? 0)
             : ($sort === 'name'         ? ($a['name'] ?? '')
-                                        : ($a['rating'] ?? 0));
+            : ($sort === 'id'           ? ($a['id'] ?? 0)
+                                        : ($a['rating'] ?? 0)));
         $vb = $sort === 'reviews_count' ? ($b['reviews_count'] ?? 0)
             : ($sort === 'name'         ? ($b['name'] ?? '')
-                                        : ($b['rating'] ?? 0));
+            : ($sort === 'id'           ? ($b['id'] ?? 0)
+                                        : ($b['rating'] ?? 0)));
         return $order === 'asc' ? ($va <=> $vb) : ($vb <=> $va);
     });
 

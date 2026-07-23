@@ -2,30 +2,45 @@
     {
         "id": 1,
         "user_id": 2,
-        "restaurant_id": 21,
-        "rating": 4,
-        "comment": "bagus, sesuai gambar",
-        "photos": [],
-        "date": "2026-04-17 13:14:03"
+        "restaurant_id": 64,
+        "rating": 5,
+        "comment": "sangat bagus",
+        "media": [
+            {
+                "type": "image",
+                "path": "\/assets\/images\/reviews\/rev_6a591d9952872.jpg"
+            }
+        ],
+        "photos": [
+            "\/assets\/images\/reviews\/rev_6a591d9952872.jpg"
+        ],
+        "date": "2026-07-16 20:06:17"
     },
     {
         "id": 2,
         "user_id": 2,
-        "restaurant_id": 11,
-        "rating": 4,
-        "comment": "bagus dan nyaman",
-        "media": [],
-        "photos": [],
-        "date": "2026-06-30 09:24:34"
+        "restaurant_id": 64,
+        "rating": 5,
+        "comment": "bagus bangettt",
+        "media": [
+            {
+                "type": "image",
+                "path": "\/assets\/images\/reviews\/rev_6a59220d1d14b.jpg"
+            }
+        ],
+        "photos": [
+            "\/assets\/images\/reviews\/rev_6a59220d1d14b.jpg"
+        ],
+        "date": "2026-07-16 20:25:17"
     },
     {
         "id": 3,
         "user_id": 2,
-        "restaurant_id": 64,
+        "restaurant_id": 82,
         "rating": 4,
-        "comment": "tempatnya nyaman dan bagus untuk kumpul makan bareng keluarga",
+        "comment": "enak sekali",
         "media": [],
         "photos": [],
-        "date": "2026-07-02 12:35:22"
+        "date": "2026-07-23 09:57:39"
     }
 ]

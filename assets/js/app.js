@@ -1,32 +1,30 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Theme Toggle — sync with cookie for PHP server-side theme reading
-    const themeBtn = document.getElementById('theme-toggle');
-    const html = document.documentElement;
-    // Read from cookie first (set by PHP), fallback to localStorage
-    const cookieTheme = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith('theme='));
-    const currentTheme = cookieTheme ? cookieTheme.split('=')[1] : (localStorage.getItem('theme') || 'light');
-    html.setAttribute('data-theme', currentTheme);
-    updateThemeIcon(currentTheme);
-
-    if (themeBtn) {
-        themeBtn.addEventListener('click', () => {
-            const newTheme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-            html.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            // Set cookie for PHP server-side reading (1 year expiry)
-            document.cookie = 'theme=' + newTheme + '; path=/; max-age=31536000; SameSite=Lax';
-            updateThemeIcon(newTheme);
-        });
-    }
-
-    function updateThemeIcon(theme) {
-        if (!themeBtn) return;
-        if (theme === 'dark') {
-            themeBtn.innerHTML = '<i class="fa-solid fa-sun"></i>';
-        } else {
-            themeBtn.innerHTML = '<i class="fa-solid fa-moon"></i>';
+    // Custom Indonesian validation messages for required and typed inputs
+    document.addEventListener('invalid', function (e) {
+        const target = e.target;
+        if (target.hasAttribute('required') || target.validity.typeMismatch) {
+            target.setCustomValidity("");
+            if (target.validity.valueMissing) {
+                target.setCustomValidity("Harap isi bagian ini.");
+            } else if (target.validity.typeMismatch) {
+                if (target.type === 'url') {
+                    target.setCustomValidity("Harap masukkan URL yang valid.");
+                } else if (target.type === 'email') {
+                    target.setCustomValidity("Harap masukkan alamat email yang valid.");
+                }
+            }
         }
-    }
+    }, true);
+
+    document.addEventListener('input', function (e) {
+        e.target.setCustomValidity("");
+    });
+
+    document.addEventListener('change', function (e) {
+        if (e.target.tagName === 'SELECT') {
+            e.target.setCustomValidity("");
+        }
+    });
 
     // Navbar scroll effect
     const navbar = document.getElementById('navbar');
@@ -172,14 +170,22 @@ function showToast(message, type = 'success') {
 
 // REAL AJAX Favorite toggling
 async function toggleFavorite(restaurantId) {
+    let baseUrl = '';
+    if (typeof window.BASE_URL !== 'undefined' && window.BASE_URL !== null) {
+        baseUrl = window.BASE_URL;
+    } else if (typeof BASE_URL !== 'undefined' && BASE_URL !== null) {
+        baseUrl = BASE_URL;
+    }
+    const cleanBaseUrl = (baseUrl ? baseUrl.replace(/\/+$/, '') : '');
+
+    // Check if user is logged in
+    if (typeof window.IS_LOGGED_IN !== 'undefined' && window.IS_LOGGED_IN === false) {
+        window.location.href = cleanBaseUrl + '/auth/login.php';
+        return;
+    }
+
     try {
-        let baseUrl = '';
-        if (typeof window.BASE_URL !== 'undefined' && window.BASE_URL !== null) {
-            baseUrl = window.BASE_URL;
-        } else if (typeof BASE_URL !== 'undefined' && BASE_URL !== null) {
-            baseUrl = BASE_URL;
-        }
-        const url = (baseUrl ? baseUrl.replace(/\/+$/, '') : '') + '/api/toggle-favorite.php';
+        const url = cleanBaseUrl + '/api/toggle-favorite.php';
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

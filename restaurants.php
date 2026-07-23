@@ -33,97 +33,114 @@ if ($q_lower || $district) {
     });
 }
 
-// Sort by rating
+// Sort by rating highest first as requested by user
 if (!empty($restaurants) && is_array($restaurants)) {
-    usort($restaurants, fn($a,$b) => ($b['rating'] ?? 0) <=> ($a['rating'] ?? 0));
+    usort($restaurants, function($a, $b) {
+        return ($b['rating'] ?? 0) <=> ($a['rating'] ?? 0);
+    });
 }
+
 
 // User favorites
 $user_fav_ids = get_user_fav_ids();
 ?>
 
-<section class="section container">
-    <!-- Page header -->
-    <div style="margin-bottom:28px;">
-        <h1 style="font-size:clamp(1.6rem,3.5vw,2rem); margin-bottom:6px; position:relative; display:inline-block;">
-            Semua Restoran
-            <span style="position:absolute; bottom:-4px; left:0; width:100%; height:4px; background:var(--clr-orange); border-radius:4px;"></span>
+<!-- ═══ PAGE HERO BANNER ════════════════════════════════════ -->
+<section style="background: linear-gradient(135deg, rgba(27, 85, 48, 0.92) 0%, rgba(17, 17, 17, 0.86) 100%), url('https://images.unsplash.com/photo-1559742811-822873691dc8?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat; padding: 56px 20px 72px; text-align: center; position: relative; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,0.08);">
+    <div class="container" style="max-width:820px; position:relative; z-index:2;">
+        <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(249,115,22,0.18); color:#fb8f3d; padding:6px 16px; border-radius:50px; font-size:0.8rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; border:1px solid rgba(249,115,22,0.35); margin-bottom:14px; box-shadow:0 2px 8px rgba(0,0,0,0.15);">
+            <i class="fa-solid fa-compass"></i> Direktori Kuliner Seafood Batam
+        </span>
+        <h1 style="color:#FFFFFF; font-size:clamp(1.9rem,4vw,2.7rem); font-weight:800; margin-bottom:12px; text-shadow:0 2px 12px rgba(0,0,0,0.45); line-height:1.18;">
+            Jelajahi <span style="color:#fb8f3d;">Semua Restoran</span> Seafood
         </h1>
-        <p style="color:var(--text-muted); margin-top:12px; font-size:0.9rem;">
-            Temukan restoran seafood terbaik di seluruh Batam
+        <p style="color:rgba(255,255,255,0.86); font-size:1.02rem; max-width:640px; margin:0 auto 20px; line-height:1.6;">
+            Temukan tempat makan olahan laut segar favorit di seluruh sudut Kota Batam dengan ulasan jujur, rekomendasi menu unggulan, dan rute lokasi akurat.
         </p>
-        <p style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;">
-            Menampilkan <strong style="color:var(--heading-color);"><?= count($restaurants) ?></strong> restoran
+        <div style="display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;">
+            <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.12); backdrop-filter:blur(6px); color:#fff; padding:6px 16px; border-radius:30px; font-size:0.84rem; border:1px solid rgba(255,255,255,0.15);">
+                <i class="fa-solid fa-store" style="color:#fbbf24;"></i> Menampilkan <strong><?= count($restaurants) ?></strong> Restoran
+            </span>
+            <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.12); backdrop-filter:blur(6px); color:#fff; padding:6px 16px; border-radius:30px; font-size:0.84rem; border:1px solid rgba(255,255,255,0.15);">
+                <i class="fa-solid fa-map-location-dot" style="color:#4ade80;"></i> Tersebar di <strong><?= count($districts) ?></strong> Kecamatan
+            </span>
             <?php if ($q || $district): ?>
-                untuk pencarian "<strong><?= htmlspecialchars($q ?: $district) ?></strong>"
-            <?php endif; ?>
-        </p>
-    </div>
-
-    <!-- Filter Bar -->
-    <form action="<?= BASE_URL ?>/restaurants.php" method="GET" id="filter-form"
-          style="background:var(--bg-card); border-radius:var(--radius-xl);
-                 box-shadow:var(--shadow-sm); border:1px solid var(--border);
-                 margin-bottom:36px; display:flex; align-items:center;
-                 padding:8px 10px 8px 20px; gap:0; overflow:visible;">
-
-        <!-- Search icon + input -->
-        <i class="fa-solid fa-magnifying-glass"
-           style="color:var(--text-muted); font-size:0.9rem; flex-shrink:0; margin-right:10px;"></i>
-        <input type="text" name="q" id="search-input"
-               value="<?= htmlspecialchars($q) ?>"
-               placeholder="Cari nama restoran atau masakan..."
-               style="flex:1; border:none; outline:none; background:transparent;
-                      font-family:'Poppins',sans-serif; font-size:0.9rem;
-                      color:var(--text-primary); min-width:0;">
-
-        <!-- Divider -->
-        <div style="width:1px; height:26px; background:var(--border); flex-shrink:0; margin:0 10px;"></div>
-
-        <!-- District select — outline pill -->
-        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-            <select name="district" id="district-select"
-                    onchange="handleDistrictChange(this)"
-                    style="appearance:none; -webkit-appearance:none;
-                           border:1.5px solid var(--border); border-radius:var(--radius-xl);
-                           background:transparent; color:var(--text-primary);
-                           font-family:'Poppins',sans-serif; font-size:0.83rem; font-weight:500;
-                           padding:6px 30px 6px 14px; cursor:pointer; outline:none;
-                           background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\");
-                           background-repeat:no-repeat; background-position:right 10px center;
-                           transition:border-color 0.2s, box-shadow 0.2s; min-width:155px;">
-                <option value="">Semua Kecamatan</option>
-                <?php foreach($districts as $d): ?>
-                    <option value="<?= htmlspecialchars($d) ?>" <?= $district===$d?'selected':'' ?>><?= htmlspecialchars($d) ?></option>
-                <?php endforeach; ?>
-            </select>
-
-            <!-- Filter apply button — only visible when a district is chosen -->
-            <button type="submit" id="filter-apply-btn"
-                    style="display:<?= $district ? 'inline-flex' : 'none' ?>;
-                           align-items:center; gap:6px;
-                           background:var(--clr-green); color:#fff; border:none;
-                           border-radius:var(--radius-xl); padding:7px 16px;
-                           font-family:'Poppins',sans-serif; font-size:0.83rem; font-weight:600;
-                           cursor:pointer; white-space:nowrap; flex-shrink:0;
-                           transition:background 0.18s, transform 0.12s;">
-                <i class="fa-solid fa-filter" style="font-size:0.78rem;"></i> Terapkan
-            </button>
-
-            <?php if ($q || $district): ?>
-            <a href="<?= BASE_URL ?>/restaurants.php" title="Hapus semua filter"
-               style="display:inline-flex; align-items:center; justify-content:center;
-                      width:32px; height:32px; border-radius:50%;
-                      border:1.5px solid var(--border); color:var(--text-muted);
-                      font-size:0.85rem; flex-shrink:0; text-decoration:none;
-                      transition:all 0.18s;"
-               onmouseover="this.style.borderColor='var(--clr-orange)';this.style.color='var(--clr-orange)';"
-               onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)';">
-                <i class="fa-solid fa-xmark"></i>
-            </a>
+            <span style="display:inline-flex; align-items:center; gap:6px; background:rgba(249,115,22,0.25); color:#fff; padding:6px 16px; border-radius:30px; font-size:0.84rem; border:1px solid rgba(249,115,22,0.5);">
+                <i class="fa-solid fa-filter"></i> Filter aktif: "<strong><?= htmlspecialchars($q ?: $district) ?></strong>"
+            </span>
             <?php endif; ?>
         </div>
-    </form>
+    </div>
+</section>
+
+<!-- ═══ FLOATING FILTER BAR & GRID ══════════════════════════ -->
+<section class="section container" style="padding-top:0;">
+    <!-- Filter Bar overlapping the hero -->
+    <div style="margin-top:-34px; position:relative; z-index:10; margin-bottom:40px;">
+        <form action="<?= BASE_URL ?>/restaurants.php" method="GET" id="filter-form"
+              style="background:var(--bg-card); border-radius:50px;
+                     box-shadow:0 12px 36px rgba(0,0,0,0.14); border:1.5px solid var(--border);
+                     display:flex; align-items:center;
+                     padding:8px 10px 8px 22px; gap:0; overflow:visible; max-width:880px; margin:0 auto;">
+
+            <!-- Search icon + input -->
+            <i class="fa-solid fa-magnifying-glass"
+               style="color:var(--text-muted); font-size:0.95rem; flex-shrink:0; margin-right:12px;"></i>
+            <input type="text" name="q" id="search-input"
+                   value="<?= htmlspecialchars($q) ?>"
+                   placeholder="Cari nama restoran atau masakan favorit Anda..."
+                   style="flex:1; border:none; outline:none; background:transparent;
+                          font-family:'Poppins',sans-serif; font-size:0.92rem;
+                          color:var(--text-primary); min-width:0; font-weight:400;">
+
+            <!-- Divider -->
+            <div style="width:1px; height:28px; background:var(--border); flex-shrink:0; margin:0 12px;"></div>
+
+            <!-- District select — outline pill -->
+            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                <select name="district" id="district-select"
+                        onchange="this.form.submit()"
+                        style="appearance:none; -webkit-appearance:none;
+                               border:1.5px solid var(--border); border-radius:var(--radius-xl);
+                               background:transparent; color:var(--text-primary);
+                               font-family:'Poppins',sans-serif; font-size:0.84rem; font-weight:500;
+                               padding:7px 32px 7px 16px; cursor:pointer; outline:none;
+                               background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\");
+                               background-repeat:no-repeat; background-position:right 12px center;
+                               transition:border-color 0.2s, box-shadow 0.2s; min-width:160px;">
+                    <option value="">Semua Kecamatan</option>
+                    <?php foreach($districts as $d): ?>
+                        <option value="<?= htmlspecialchars($d) ?>" <?= $district===$d?'selected':'' ?>><?= htmlspecialchars($d) ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <!-- Search Icon Button (sebelah kanan dari semua kecamatan) -->
+                <button type="submit" id="search-submit-btn" title="Cari Restoran"
+                        style="display:inline-flex; align-items:center; justify-content:center;
+                               width:40px; height:40px; border-radius:50%;
+                               background:var(--clr-orange); color:#fff; border:none;
+                               cursor:pointer; flex-shrink:0;
+                               box-shadow:0 3px 8px rgba(224,123,42,0.35); transition:all 0.18s;"
+                        onmouseover="this.style.transform='scale(1.08)'"
+                        onmouseout="this.style.transform='scale(1)'">
+                    <i class="fa-solid fa-magnifying-glass" style="font-size:0.95rem;"></i>
+                </button>
+
+                <?php if ($q || $district): ?>
+                <a href="<?= BASE_URL ?>/restaurants.php" title="Hapus semua filter"
+                   style="display:inline-flex; align-items:center; justify-content:center;
+                          width:34px; height:34px; border-radius:50%;
+                          border:1.5px solid var(--border); color:var(--text-muted);
+                          font-size:0.88rem; flex-shrink:0; text-decoration:none;
+                          transition:all 0.18s;"
+                   onmouseover="this.style.borderColor='var(--clr-orange)';this.style.color='var(--clr-orange)';"
+                   onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)';">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+                <?php endif; ?>
+            </div>
+        </form>
+    </div>
 
     <script>
     // Highlight select border when a district is active
@@ -135,35 +152,6 @@ $user_fav_ids = get_user_fav_ids();
             sel.style.boxShadow   = '0 0 0 2px rgba(45,106,63,0.12)';
         }
     })();
-
-    function handleDistrictChange(sel) {
-        const btn = document.getElementById('filter-apply-btn');
-        if (sel.value) {
-            // show button + highlight select
-            btn.style.display = 'inline-flex';
-            sel.style.borderColor = 'var(--clr-green)';
-            sel.style.boxShadow   = '0 0 0 2px rgba(45,106,63,0.12)';
-        } else {
-            // hide button + reset select style
-            btn.style.display = 'none';
-            sel.style.borderColor = 'var(--border)';
-            sel.style.boxShadow   = 'none';
-            // If no search query either, submit to clear filters
-            const q = document.getElementById('search-input');
-            if (!q || !q.value.trim()) {
-                window.location.href='<?= BASE_URL ?>/restaurants.php';
-            }
-        }
-    }
-
-    // Hover effect on apply button
-    const applyBtn = document.getElementById('filter-apply-btn');
-    if (applyBtn) {
-        applyBtn.addEventListener('mouseover', () => applyBtn.style.background = 'var(--clr-green-light)');
-        applyBtn.addEventListener('mouseout',  () => applyBtn.style.background = 'var(--clr-green)');
-        applyBtn.addEventListener('mousedown', () => applyBtn.style.transform = 'translateY(1px)');
-        applyBtn.addEventListener('mouseup',   () => applyBtn.style.transform = 'none');
-    }
     </script>
 
     <!-- Grid -->
@@ -182,8 +170,9 @@ $user_fav_ids = get_user_fav_ids();
             <div style="position:relative;">
                 <a href="<?= BASE_URL ?>/restaurant-detail.php?id=<?= $r['id'] ?>" class="card" style="display:block;">
                     <div class="card-img-wrap">
-                        <img src="<?= htmlspecialchars($r['photos'][0] ?? 'https://images.unsplash.com/photo-1565557623262-b51c2513a641') ?>"
-                             alt="<?= htmlspecialchars($r['name']) ?>" class="card-img">
+                        <img src="<?= htmlspecialchars(!empty($r['foto_utama']) ? $r['foto_utama'] : ($r['photos'][0] ?? 'https://images.unsplash.com/photo-1565557623262-b51c2513a641')) ?>"
+                             alt="<?= htmlspecialchars($r['name']) ?>" class="card-img"
+                             referrerpolicy="no-referrer">
                         <div class="card-badge">
                             <i class="fa-solid fa-star" style="color:#fbbf24; margin-right:2px;"></i>
                             <?= $r['rating'] ?>
@@ -201,7 +190,6 @@ $user_fav_ids = get_user_fav_ids();
                         </div>
                     </div>
                 </a>
-                <?php if (is_logged_in()): ?>
                 <button onclick="event.stopPropagation(); toggleFavorite(<?= $r['id'] ?>);"
                         data-fav-id="<?= $r['id'] ?>"
                         title="<?= $is_fav ? 'Hapus favorit' : 'Simpan favorit' ?>"
@@ -210,7 +198,6 @@ $user_fav_ids = get_user_fav_ids();
                         onmouseout="this.style.transform='scale(1)'">
                     <i class="fa-<?= $is_fav?'solid':'regular' ?> fa-heart" style="color:<?= $is_fav?'#ef4444':'#aaa' ?>; font-size:0.85rem; pointer-events:none;"></i>
                 </button>
-                <?php endif; ?>
             </div>
             <?php endforeach; ?>
         </div>

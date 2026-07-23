@@ -1,68 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
-
-if (is_logged_in()) redirect('/profile.php');
-
-$error = '';
-$success = '';
-$reset_link = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email_or_user = trim($_POST['email'] ?? '');
-
-    if (empty($email_or_user)) {
-        $error = 'Harap masukkan alamat email atau nama pengguna Anda.';
-    } else {
-        $found_user = null;
-        try {
-            $pdo = get_db();
-            if ($pdo) {
-                $stmt = $pdo->prepare("SELECT id_user as id, username, email FROM user WHERE email = ? OR username = ?");
-                $stmt->execute([$email_or_user, $email_or_user]);
-                $found_user = $stmt->fetch(PDO::FETCH_ASSOC);
-            }
-        } catch (Throwable $e) {}
-
-        if (!$found_user) {
-            $users = get_users();
-            foreach ($users as $u) {
-                if ($u['email'] === $email_or_user || $u['username'] === $email_or_user) {
-                    $found_user = $u;
-                    break;
-                }
-            }
-        }
-
-        if ($found_user) {
-            $token = bin2hex(random_bytes(16));
-            $expires = date('Y-m-d H:i:s', time() + 3600); // 1 jam dari sekarang
-
-            try {
-                if (isset($pdo) && $pdo) {
-                    $upd = $pdo->prepare("UPDATE user SET reset_token = ?, reset_expires = ? WHERE id_user = ?");
-                    $upd->execute([$token, $expires, $found_user['id']]);
-                }
-            } catch (Throwable $e) {}
-
-            // Update JSON backup juga
-            $users = read_json('users.json');
-            foreach ($users as &$u) {
-                if ($u['id'] == $found_user['id']) {
-                    $u['reset_token'] = $token;
-                    $u['reset_expires'] = $expires;
-                    break;
-                }
-            }
-            write_json('users.json', $users);
-
-            $success = 'Instruksi pemulihan kata sandi telah berhasil diproses!';
-            $reset_link = BASE_URL . '/auth/reset-password.php?token=' . urlencode($token) . '&email=' . urlencode($found_user['email']);
-        } else {
-            $error = 'Alamat email atau nama pengguna tidak ditemukan dalam sistem.';
-        }
-    }
+if (is_logged_in()) {
+    redirect(is_admin() ? '/admin/index.php' : '/profile.php');
 }
-
 $theme = $_COOKIE['theme'] ?? 'light';
 ?>
 <!DOCTYPE html>
@@ -74,6 +14,8 @@ $theme = $_COOKIE['theme'] ?? 'light';
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+    <!-- SweetAlert2 untuk notifikasi pop-up modern -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
     .auth-page {
         min-height: 100vh;
@@ -89,38 +31,73 @@ $theme = $_COOKIE['theme'] ?? 'light';
     .auth-premium-card {
         background: var(--bg-card);
         border-radius: 20px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+        box-shadow: 0 20px 60px rgba(0,0,0,0.08);
         width: 100%;
-        max-width: 480px;
+        max-width: 440px;
         overflow: hidden;
+        border: 1px solid var(--border);
+        position: relative;
     }
-    .auth-top-bar { height: 8px; background: var(--clr-green); }
-    .auth-card-body { padding: 36px 40px 40px; }
-    @media (max-width: 480px) { .auth-card-body { padding: 28px 22px 32px; } }
+    [data-theme="dark"] .auth-premium-card {
+        box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+
+    .auth-top-bar {
+        height: 6px;
+        background: linear-gradient(90deg, var(--clr-orange) 0%, #FFA726 100%);
+    }
+
+    .auth-card-body {
+        padding: 36px 36px 40px;
+    }
 
     .auth-logo-row {
-        display: flex; align-items: center; gap: 10px; margin-bottom: 22px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+        text-decoration: none;
     }
     .auth-logo-icon {
-        width: 38px; height: 38px; background: var(--clr-green); border-radius: 10px;
-        display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1rem;
-    }
-    .auth-logo-name { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; color: var(--clr-green); }
-
-    .auth-divider-line { height: 1px; background: var(--border); margin: 0 0 24px; }
-    .auth-title { font-family: 'Poppins', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--heading-color); letter-spacing: -0.025em; margin-bottom: 5px; }
-    .auth-subtitle { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 24px; line-height: 1.6; }
-
-    .simulated-email-box {
-        background: rgba(45, 106, 63, 0.08);
-        border: 1.5px dashed var(--clr-green);
+        width: 42px;
+        height: 42px;
         border-radius: 12px;
-        padding: 16px;
-        margin-top: 20px;
-        text-align: left;
+        background: linear-gradient(135deg, var(--clr-orange) 0%, #D84315 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #FFFFFF;
+        font-size: 1rem;
+        flex-shrink: 0;
     }
-    [data-theme="dark"] .simulated-email-box {
-        background: rgba(45, 106, 63, 0.18);
+    .auth-logo-name {
+        font-family: 'Poppins', sans-serif;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--clr-green);
+        letter-spacing: -0.01em;
+    }
+
+    .auth-divider-line {
+        height: 1px;
+        background: var(--border);
+        margin: 0 0 24px;
+    }
+
+    .auth-title {
+        font-family: 'Poppins', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--heading-color);
+        letter-spacing: -0.025em;
+        margin-bottom: 6px;
+    }
+
+    .auth-subtitle {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        margin-bottom: 26px;
+        line-height: 1.5;
     }
     </style>
 </head>
@@ -129,76 +106,88 @@ $theme = $_COOKIE['theme'] ?? 'light';
     <div class="auth-premium-card">
         <div class="auth-top-bar"></div>
         <div class="auth-card-body">
-            <!-- Logo -->
-            <div class="auth-logo-row">
+            <a href="<?= BASE_URL ?>/index.php" class="auth-logo-row">
                 <div class="auth-logo-icon"><i class="fa-solid fa-fish-fins"></i></div>
                 <span class="auth-logo-name">Seafood Batam</span>
-            </div>
+            </a>
 
             <div class="auth-divider-line"></div>
 
-            <h1 class="auth-title">Lupa Kata Sandi</h1>
-            <p class="auth-subtitle">Masukkan email atau nama pengguna Anda yang terdaftar. Kami akan menyiapkan tautan untuk mereset kata sandi Anda.</p>
+            <h1 class="auth-title">Lupa Kata Sandi?</h1>
+            <p class="auth-subtitle">Masukkan alamat email yang terdaftar pada akun Anda. Kami akan mengirimkan tautan untuk mengatur ulang kata sandi.</p>
 
-            <?php if ($error): ?>
-            <div class="alert alert-error" style="margin-bottom:18px;">
-                <i class="fa-solid fa-circle-exclamation"></i> <?= htmlspecialchars($error) ?>
-            </div>
-            <?php endif; ?>
-
-            <?php if ($success): ?>
-            <div class="alert alert-success" style="margin-bottom:18px;">
-                <i class="fa-solid fa-check-circle"></i> <?= htmlspecialchars($success) ?>
-            </div>
-
-            <div class="simulated-email-box">
-                <div style="font-size:0.82rem; font-weight:700; color:var(--clr-green); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-                    <i class="fa-solid fa-envelope-open-text"></i> Simulasi Email Pemulihan (XAMPP Lokal)
-                </div>
-                <p style="font-size:0.83rem; color:var(--text-secondary); margin-bottom:12px; line-height:1.5;">
-                    Di lingkungan server lokal tanpa SMTP, tautan pemulihan Anda ditampilkan langsung di bawah ini agar Anda dapat langsung melanjutkan proses reset kata sandi:
-                </p>
-                <a href="<?= $reset_link ?>" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:8px; width:100%; justify-content:center; padding:10px;">
-                    <i class="fa-solid fa-key"></i> Reset Kata Sandi Sekarang
-                </a>
-            </div>
-            <?php else: ?>
-
-            <form method="POST" action="">
-                <div class="form-group" style="margin-bottom:20px;">
-                    <label class="form-label" for="fp-email">Email atau Nama Pengguna *</label>
-                    <input type="text" name="email" id="fp-email" class="form-control"
-                           placeholder="email@example.com atau username"
-                           value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : '' ?>"
-                           required autofocus>
+            <form id="forgotForm">
+                <div class="form-group">
+                    <label class="form-label" for="email">Alamat Email</label>
+                    <input type="email" name="email" id="email" class="form-control"
+                           placeholder="email@example.com" required autocomplete="email">
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">
-                    <i class="fa-solid fa-paper-plane"></i> Kirim Instruksi Pemulihan
+                <button type="submit" class="btn btn-primary btn-lg" id="btnSubmit" style="width:100%;">
+                    <i class="fa-solid fa-paper-plane"></i> Kirim Tautan Reset
                 </button>
             </form>
 
-            <?php endif; ?>
-
             <div style="margin-top:24px; text-align:center;">
-                <a href="<?= BASE_URL ?>/auth/login.php" style="font-size:0.875rem; color:var(--clr-orange); font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                <a href="<?= BASE_URL ?>/auth/login.php" style="font-size:0.875rem; color:var(--clr-orange); font-weight:600; text-decoration:none;">
                     <i class="fa-solid fa-arrow-left"></i> Kembali ke Halaman Masuk
                 </a>
             </div>
         </div>
     </div>
-
-    <p style="margin-top:22px; font-size:0.78rem; color:var(--text-muted); text-align:center; font-family:'Poppins',sans-serif;">
-        &copy; <?= date('Y') ?> Seafood Batam &mdash;
-        <a href="<?= BASE_URL ?>/index.php" style="color:var(--text-muted); text-decoration:underline;">Kembali ke Beranda</a>
-    </p>
 </div>
 
 <script>
-(function(){
-    const t = document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('theme='));
-    if (t) document.documentElement.setAttribute('data-theme', t.split('=')[1]);
-})();
+document.getElementById('forgotForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmit');
+    const emailInput = document.getElementById('email');
+    const email = emailInput.value.trim();
+
+    if (!email) {
+        Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Silakan masukkan alamat email Anda.' });
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim...';
+
+    try {
+        const res = await fetch('process-forgot-password.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ email: email })
+        });
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            Swal.fire({
+                icon: 'success',
+                title: 'Email Terkirim!',
+                text: data.message,
+                confirmButtonColor: '#28a745'
+            });
+            emailInput.value = '';
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal!',
+                text: data.message || 'Alamat email tidak ditemukan.',
+                confirmButtonColor: '#d33'
+            });
+        }
+    } catch (err) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Kesalahan Jaringan',
+            text: 'Tidak dapat terhubung ke server. Silakan coba kembali.',
+            confirmButtonColor: '#d33'
+        });
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Tautan Reset';
+    }
+});
 </script>
 </body>
 </html>

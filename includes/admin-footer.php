@@ -4,30 +4,6 @@
 
 <script src="<?= BASE_URL ?>/assets/js/admin.js"></script>
 <script>
-// Dark mode toggle for admin
-function toggleAdmTheme() {
-    const html = document.documentElement;
-    const isDark = html.getAttribute('data-theme') === 'dark';
-    const newTheme = isDark ? 'light' : 'dark';
-    html.setAttribute('data-theme', newTheme);
-    document.cookie = 'theme=' + newTheme + '; path=/; max-age=31536000';
-    updateAdmThemeUI(newTheme);
-}
-
-function updateAdmThemeUI(theme) {
-    const icon  = document.getElementById('adm-theme-icon');
-    const label = document.getElementById('adm-theme-label');
-    if (!icon || !label) return;
-    if (theme === 'dark') {
-        icon.className  = 'fa-solid fa-sun';
-        label.textContent = 'Mode Terang';
-    } else {
-        icon.className  = 'fa-solid fa-moon';
-        label.textContent = 'Mode Gelap';
-    }
-}
-
-updateAdmThemeUI(document.documentElement.getAttribute('data-theme'));
 
 // Confirmation modal system
 let _adm_pending_action = null;
@@ -43,8 +19,9 @@ function admConfirm(title, msg, iconClass, btnClass, btnIcon, btnLabel, onConfir
     confirmBtn.className = 'adm-btn adm-btn-lg ' + btnClass;
     confirmBtn.innerHTML = '<i class="' + btnIcon + '"></i> ' + btnLabel;
     confirmBtn.onclick   = function() {
+        const action = _adm_pending_action;
         closeAdmModal();
-        if (_adm_pending_action) _adm_pending_action();
+        if (action) action();
     };
     document.getElementById('adm-confirm-overlay').classList.add('open');
 }

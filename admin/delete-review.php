@@ -26,8 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $e) {}
 
     $reviews = read_json('reviews.json');
-    $reviews = array_filter($reviews, fn($r) => $r['id'] !== $id);
-    write_json('reviews.json', array_values($reviews));
+    $reviews = array_filter($reviews, fn($r) => (int)$r['id'] !== $id);
+    try { write_json('reviews.json', array_values($reviews)); } catch(Throwable $e){}
     $_SESSION['success'] = 'Ulasan berhasil dihapus.';
 }
-redirect('/admin/ulasan.php');
+redirect('ulasan.php');

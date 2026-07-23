@@ -1,7 +1,25 @@
 <?php
 require_once __DIR__ . '/../includes/admin-header.php';
 
-$reviews     = read_json('reviews.json');
+$reviews     = [];
+$foto_map    = [];
+try {
+    $pdo = get_db();
+    if ($pdo) {
+        $stmt = $pdo->query("
+            SELECT id_ulasan as id, id_user as user_id, id_restoran as restaurant_id, rating, isi_ulasan as comment, tanggal_ulasan as date
+            FROM ulasan
+            ORDER BY tanggal_ulasan DESC
+        ");
+        $reviews = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $stmt_foto = $pdo->query("SELECT id_ulasan, path_foto FROM foto_ulasan");
+        while ($row = $stmt_foto->fetch(PDO::FETCH_ASSOC)) {
+            $foto_map[$row['id_ulasan']][] = $row['path_foto'];
+        }
+    }
+} catch (Throwable $e) {}
+
 $restaurants = get_restaurants();
 $users       = get_users();
 
@@ -22,9 +40,6 @@ if ($q) {
         return str_contains($rname, $q) || str_contains($uname, $q) || str_contains($comment, $q);
     });
 }
-
-// Sort newest first
-usort($reviews, fn($a,$b) => strcmp($b['date'] ?? '', $a['date'] ?? ''));
 
 // Avatar colors
 $avatar_colors = ['#4CAF50','#FF9800','#2196F3','#9C27B0','#F44336','#00BCD4'];
@@ -76,21 +91,22 @@ $avatar_colors = ['#4CAF50','#FF9800','#2196F3','#9C27B0','#F44336','#00BCD4'];
                     <th>Rating</th>
                     <th>Komentar</th>
                     <th>Tanggal</th>
-                    <th style="text-align:right;">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($reviews)): ?>
                 <tr>
-                    <td colspan="8">
+                    <td colspan="7">
                         <div class="adm-empty-state">
-                            <i class="fa-regular fa-comment-dots"></i>
-                            <p>Belum ada ulasan.</p>
+                            <i class="fa-solid fa-comment-slash"></i>
+                            <p>Belum ada ulasan terdata<?= $q ? ' untuk pencarian ini' : '' ?>.</p>
                         </div>
                     </td>
                 </tr>
                 <?php else: ?>
-                <?php $idx = 0; foreach($reviews as $rev):
+                <?php 
+                $idx = 0;
+                foreach($reviews as $rev): 
                     $idx++;
                     $user = $user_map[$rev['user_id']] ?? null;
                     $rest = $rest_map[$rev['restaurant_id']] ?? null;
@@ -98,15 +114,7 @@ $avatar_colors = ['#4CAF50','#FF9800','#2196F3','#9C27B0','#F44336','#00BCD4'];
                     $initial = mb_strtoupper(mb_substr($uname, 0, 1));
                     $color   = $avatar_colors[$rev['user_id'] % count($avatar_colors)];
 
-                    // First media
-                    $thumb = null;
-                    if (!empty($rev['media'])) {
-                        foreach ($rev['media'] as $m) {
-                            if ($m['type'] === 'image') { $thumb = $m['path']; break; }
-                        }
-                    } elseif (!empty($rev['photos'])) {
-                        $thumb = $rev['photos'][0];
-                    }
+                    $thumb = $foto_map[$rev['id']][0] ?? null;
                 ?>
                 <tr style="min-height:80px;">
                     <td style="color:var(--adm-text-muted); font-weight:600;"><?= $idx ?></td>
@@ -159,17 +167,6 @@ $avatar_colors = ['#4CAF50','#FF9800','#2196F3','#9C27B0','#F44336','#00BCD4'];
                     </td>
                     <td style="white-space:nowrap; font-size:0.8rem; color:var(--adm-text-muted);">
                         <?= htmlspecialchars(substr($rev['date'] ?? '', 0, 10)) ?>
-                    </td>
-                    <td>
-                        <div style="display:flex; justify-content:flex-end;">
-                            <form id="del-rev-<?= $rev['id'] ?>" action="<?= BASE_URL ?>/admin/delete-review.php" method="POST" style="display:none;">
-                                <input type="hidden" name="id" value="<?= $rev['id'] ?>">
-                            </form>
-                            <button type="button" class="adm-btn adm-btn-outline-red adm-btn-sm"
-                                    onclick="confirmDelete('del-rev-<?= $rev['id'] ?>', 'Hapus Ulasan', 'Hapus ulasan dari <?= addslashes(htmlspecialchars($uname)) ?>?')">
-                                <i class="fa-solid fa-trash"></i> Hapus
-                            </button>
-                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>

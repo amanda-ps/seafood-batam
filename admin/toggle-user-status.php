@@ -14,29 +14,37 @@ if (!$user_id) {
     exit;
 }
 
-$users = get_users();
-$found = false;
-foreach ($users as &$u) {
-    if ($u['id'] === $user_id && $u['role'] !== 'admin') {
-        $u['status'] = $new_status;
-        $found = true;
-        break;
-    }
-}
-
-if (!$found) {
-    echo json_encode(['success' => false, 'message' => 'Pengguna tidak ditemukan.']);
-    exit;
-}
-
+$updated = false;
 try {
     $pdo = get_db();
     if ($pdo) {
         $db_status = ($new_status === 'active') ? 'aktif' : 'nonaktif';
-        $pdo->prepare("UPDATE user SET status = ? WHERE id_user = ? AND role != 'admin'")->execute([$db_status, $user_id]);
+        $stmt = $pdo->prepare("UPDATE user SET status = ? WHERE id_user = ? AND role != 'admin'");
+        $stmt->execute([$db_status, $user_id]);
+        if ($stmt->rowCount() > 0) {
+            $updated = true;
+        } else {
+            // Check if user exists in MySQL
+            $chk = $pdo->prepare("SELECT id_user FROM user WHERE id_user = ? AND role != 'admin'");
+            $chk->execute([$user_id]);
+            if ($chk->fetchColumn()) $updated = true;
+        }
     }
 } catch (Throwable $e) {}
 
-write_json('users.json', $users);
-$label = $new_status === 'active' ? 'diaktifkan' : 'dinonaktifkan';
-echo json_encode(['success' => true, 'message' => "Pengguna berhasil $label."]);
+$users = get_users();
+foreach ($users as &$u) {
+    if ((int)$u['id'] === $user_id && $u['role'] !== 'admin') {
+        $u['status'] = $new_status;
+        $updated = true;
+        break;
+    }
+}
+
+if ($updated) {
+    try { write_json('users.json', $users); } catch(Throwable $e){}
+    $label = $new_status === 'active' ? 'diaktifkan' : 'dinonaktifkan';
+    echo json_encode(['success' => true, 'message' => "Pengguna berhasil $label."]);
+} else {
+    echo json_encode(['success' => false, 'message' => 'Pengguna tidak ditemukan atau adalah admin.']);
+}

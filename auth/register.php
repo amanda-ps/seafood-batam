@@ -92,6 +92,7 @@ $theme = $_COOKIE['theme'] ?? 'light';
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/assets/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
     .auth-page {
         min-height: 100vh;
@@ -177,7 +178,7 @@ $theme = $_COOKIE['theme'] ?? 'light';
             </div>
             <?php endif; ?>
 
-            <form method="POST" action="" id="reg-form">
+            <form method="POST" action="" id="reg-form" novalidate>
                 <div style="display:flex; flex-direction:column; gap:16px;">
 
                     <div class="form-group" style="margin:0;">
@@ -263,7 +264,7 @@ $theme = $_COOKIE['theme'] ?? 'light';
                     </label>
 
                     <button type="submit" class="btn btn-primary btn-lg" style="width:100%;">
-                        <i class="fa-solid fa-user-plus"></i> Daftar Sekarang
+                        <i class="fa-solid fa-user-plus"></i> Daftar
                     </button>
                 </div>
             </form>
@@ -322,10 +323,32 @@ function updateStrength(val) {
     label.style.color    = lv.color;
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+    const regForm = document.getElementById('reg-form');
+    if (regForm) {
+        regForm.addEventListener('submit', function(e) {
+            if (!regForm.checkValidity()) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Pendaftaran Gagal',
+                    text: 'Mohon lengkapi semua data',
+                    confirmButtonColor: 'var(--clr-green)'
+                });
+            }
+        });
+    }
+});
+
 (function(){
     const t = document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('theme='));
     if (t) document.documentElement.setAttribute('data-theme', t.split('=')[1]);
 })();
 </script>
+<script>
+    const BASE_URL = '<?= BASE_URL ?>';
+    window.BASE_URL = '<?= BASE_URL ?>';
+</script>
+<script src="<?= BASE_URL ?>/assets/js/app.js"></script>
 </body>
 </html>

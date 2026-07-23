@@ -7,9 +7,23 @@ require_once __DIR__ . '/includes/db.php';
 $pdo = get_db();
 
 // Load user's data
-$all_reviews = read_json('reviews.json');
 $restaurants = get_restaurants();
-$user_reviews = array_filter($all_reviews, fn($r) => $r['user_id'] == $user['id']);
+
+// Load user's reviews natively from MySQL
+$user_reviews = [];
+try {
+    $stmtRev = $pdo->prepare("
+        SELECT id_ulasan as id, id_restoran as restaurant_id, rating, isi_ulasan as comment, tanggal_ulasan as date
+        FROM ulasan 
+        WHERE id_user = ? 
+        ORDER BY tanggal_ulasan DESC
+    ");
+    $stmtRev->execute([$_SESSION['id_user']]);
+    $user_reviews = $stmtRev->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    $all_reviews = read_json('reviews.json');
+    $user_reviews = array_filter($all_reviews, fn($r) => $r['user_id'] == $user['id']);
+}
 
 // Build restaurant map
 $rest_map = [];
@@ -323,7 +337,9 @@ $avatar_color  = $avatar_colors[$user['id'] % count($avatar_colors)];
                     <a href="<?= BASE_URL ?>/restaurant-detail.php?id=<?= $r['id'] ?>" class="card" style="display:block;">
                         <div class="card-img-wrap">
                             <img src="<?= htmlspecialchars($r['photos'][0] ?? 'https://images.unsplash.com/photo-1565557623262-b51c2513a641') ?>"
-                                 alt="<?= htmlspecialchars($r['name']) ?>" class="card-img">
+                                 alt="<?= htmlspecialchars($r['name']) ?>" class="card-img"
+                                 referrerpolicy="no-referrer"
+                                 onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80';">
                             <div class="card-badge">
                                 <i class="fa-solid fa-star" style="color:#fbbf24; margin-right:2px;"></i>
                                 <?= $r['rating'] ?>
@@ -379,8 +395,15 @@ $avatar_color  = $avatar_colors[$user['id'] % count($avatar_colors)];
                                 <?php endfor; ?>
                             </div>
                         </div>
-                        <div style="font-size:0.75rem; color:var(--text-muted); font-family:'Poppins',sans-serif;">
-                            <?= htmlspecialchars(substr($rev['date'] ?? '', 0, 10)) ?>
+                        <div style="text-align:right;">
+                            <div style="font-size:0.75rem; color:var(--text-muted); font-family:'Poppins',sans-serif; margin-bottom:6px;">
+                                <?= htmlspecialchars(substr($rev['date'] ?? '', 0, 10)) ?>
+                            </div>
+                            <button type="button" 
+                                    onclick="deleteMyReview(<?= intval($rev['id']) ?>, <?= intval($rev['restaurant_id']) ?>)"
+                                    style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;">
+                                <i class="fa-solid fa-trash-can"></i> Hapus
+                            </button>
                         </div>
                     </div>
                     <p style="font-size:0.875rem; color:var(--text-secondary); line-height:1.65; margin:0;">
@@ -516,6 +539,57 @@ function previewAvatar(input) {
         wrap.innerHTML = '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" alt="Preview">';
     };
     reader.readAsDataURL(input.files[0]);
+}
+
+async function deleteMyReview(idUlasan, restoId) {
+    const result = await Swal.fire({
+        title: 'Hapus Ulasan Ini?',
+        text: 'Apakah kamu yakin ingin menghapus ulasanmu?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            const formData = new FormData();
+            formData.append('id_ulasan', idUlasan);
+            formData.append('restaurant_id', restoId);
+
+            const res = await fetch(BASE_URL + '/auth/delete-my-review.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+
+            if (data.status === 'success') {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: data.message,
+                    confirmButtonColor: '#F97316'
+                });
+                location.reload();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message || 'Gagal menghapus ulasan.',
+                    confirmButtonColor: '#e11d48'
+                });
+            }
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Kesalahan Jaringan',
+                text: 'Tidak dapat terhubung ke server.',
+                confirmButtonColor: '#e11d48'
+            });
+        }
+    }
 }
 </script>
 

@@ -60,10 +60,31 @@ if (!empty($db_lat) && !empty($db_lng) && (float)$db_lat != 0 && (float)$db_lng 
 $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
     ? $restaurant['maps_link']
     : "https://www.google.com/maps?q=" . $map_lat . "," . $map_lng;
-?>
 
-<!-- Leaflet CSS — must load before map div renders -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+// Generate Google Maps Embed URL untuk iframe berdasarkan link di database atau nama/alamat
+$embed_query = '';
+if (!empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#') {
+    $ml = $restaurant['maps_link'];
+    if (preg_match('/[?&](?:query|q)=([^&]+)/i', $ml, $matches)) {
+        $embed_query = $matches[1];
+    } elseif (preg_match('/@(-?\d+\.\d+),(-?\d+\.\d+)/', $ml, $matches)) {
+        $embed_query = $matches[1] . ',' . $matches[2];
+    } elseif (preg_match('/place\/([^\/]+)/i', $ml, $matches)) {
+        $embed_query = $matches[1];
+    }
+}
+if (empty($embed_query)) {
+    // Cek apakah koordinat valid (bukan 0 dan bukan 9.999999 salah ketik)
+    $valid_lat = (!empty($map_lat) && (float)$map_lat != 0);
+    $valid_lng = (!empty($map_lng) && (float)$map_lng > 100 && (float)$map_lng < 110);
+    if ($valid_lat && $valid_lng) {
+        $embed_query = $map_lat . ',' . $map_lng;
+    } else {
+        $embed_query = urlencode($restaurant['name'] . ', ' . ($restaurant['address'] ?: ($restaurant['district'] . ', Kota Batam')));
+    }
+}
+$google_embed_url = "https://maps.google.com/maps?q=" . $embed_query . "&z=15&output=embed";
+?>
 
 <style>
 /* ── Review Form & Cards ── */
@@ -380,7 +401,6 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                 </p>
             </div>
             <div>
-                <?php if (is_logged_in()): ?>
                 <button onclick="toggleFavorite(<?= $id ?>)" id="fav-btn" 
                         class="btn <?= $is_fav ? 'btn-secondary' : 'btn-ghost' ?>"
                         style="background:rgba(255,255,255,0.15); backdrop-filter:blur(8px); border-color:rgba(255,255,255,0.35); color:#FFFFFF;">
@@ -388,7 +408,6 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                        style="color:<?= $is_fav ? '#ef4444' : 'rgba(255,255,255,0.85)' ?>;"></i>
                     <span id="fav-text"><?= $is_fav ? 'Tersimpan' : 'Simpan' ?></span>
                 </button>
-                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -411,12 +430,16 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                 <span class="eyebrow">Galeri Foto</span>
                 <div style="width:100%; height:360px; border-radius:var(--radius-md); overflow:hidden; margin-bottom:12px; box-shadow:var(--shadow-md);">
                     <img id="main-gallery-img" src="<?= htmlspecialchars($main_photo) ?>" 
-                         alt="Galeri Utama" style="width:100%; height:100%; object-fit:cover; transition:opacity 0.25s ease;">
+                         alt="Galeri Utama" style="width:100%; height:100%; object-fit:cover; transition:opacity 0.25s ease;"
+                         referrerpolicy="no-referrer"
+                         onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80';">
                 </div>
                 <div class="gallery-grid" style="grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap:8px;">
                     <?php foreach($photos as $index => $img): ?>
                         <img src="<?= htmlspecialchars($img) ?>" alt="Foto <?= $index ?>" 
                              onclick="switchMainImg(this.src)"
+                             referrerpolicy="no-referrer"
+                             onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=800&q=80';"
                              style="height:90px; cursor:pointer; border-radius:var(--radius-sm); 
                                     border:2px solid <?= $index === 0 ? 'var(--clr-orange)' : 'transparent' ?>;
                                     transition:all 0.2s ease;"
@@ -448,7 +471,7 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                                 padding:6px 24px; border-radius:4px;
                                 box-shadow:0 2px 8px rgba(45,106,63,0.30);
                                 z-index:2; white-space:nowrap;">
-                        MENU
+                        MENU BEST SELLER
                     </div>
 
                     <!-- Card -->
@@ -528,17 +551,17 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                     <div class="review-form-body">
                         <form action="<?= BASE_URL ?>/auth/submit-review.php" method="POST" enctype="multipart/form-data" id="review-form">
                             <input type="hidden" name="restaurant_id" value="<?= $id ?>">
-                            <input type="hidden" name="rating" id="review-rating" value="5">
+                            <input type="hidden" name="rating" id="review-rating" value="0">
 
                             <!-- Star Rating -->
                             <div class="star-rating-group">
                                 <span class="star-rating-label">Penilaian Anda:</span>
                                 <div class="star-rating-interactive" id="interactive-stars">
                                     <?php for($s = 1; $s <= 5; $s++): ?>
-                                        <i class="fa-solid fa-star active" data-val="<?= $s ?>"></i>
+                                        <i class="fa-regular fa-star" data-val="<?= $s ?>" style="color:#d1d5db;"></i>
                                     <?php endfor; ?>
                                 </div>
-                                <span class="star-rating-text" id="star-label">5 / 5 ★</span>
+                                <span class="star-rating-text" id="star-label">Pilih rating Anda</span>
                             </div>
 
                             <!-- Comment -->
@@ -590,6 +613,9 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                         <p style="color:var(--text-muted); font-size:0.875rem;">Jadilah yang pertama mengulas restoran ini!</p>
                     </div>
                 <?php else: ?>
+                    <?php 
+                        $current_user_id = $_SESSION['id_user'] ?? $_SESSION['user_id'] ?? 0;
+                    ?>
                     <div style="display:flex; flex-direction:column; gap:16px;">
                     <?php foreach(array_reverse(array_values($reviews)) as $rev):
                         $u = get_user($rev['user_id']);
@@ -603,6 +629,12 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                                 $media[] = ['type' => 'image', 'path' => $p];
                             }
                         }
+                        foreach($media as &$m) {
+                            if (isset($m['path']) && strpos($m['path'], '/assets/') === 0 && strpos($m['path'], BASE_URL) !== 0) {
+                                $m['path'] = BASE_URL . $m['path'];
+                            }
+                        }
+                        unset($m);
                     ?>
                         <div class="review-card">
                             <div class="review-card-header">
@@ -626,6 +658,16 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                                     <div style="text-align:right; font-size:0.78rem; color:var(--text-muted); font-weight:600; margin-top:2px;">
                                         <?= $rev['rating'] ?>/5
                                     </div>
+                                    <?php if ($current_user_id && ($rev['user_id'] == $current_user_id || is_admin())): ?>
+                                        <div style="text-align:right; margin-top:8px;">
+                                            <button type="button" 
+                                                    onclick="deleteMyReview(<?= intval($rev['id']) ?>, <?= intval($id) ?>)"
+                                                    title="Hapus ulasan saya"
+                                                    style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid rgba(239, 68, 68, 0.3); padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all 0.2s;">
+                                                <i class="fa-solid fa-trash-can"></i> Hapus
+                                            </button>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             
@@ -637,6 +679,7 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                                         <?php if ($m['type'] === 'image'): ?>
                                             <img src="<?= htmlspecialchars($m['path']) ?>" 
                                                  alt="Review media"
+                                                 onerror="this.style.display='none';"
                                                  onclick="window.open(this.src, '_blank')">
                                         <?php else: ?>
                                             <video src="<?= htmlspecialchars($m['path']) ?>" controls
@@ -695,9 +738,19 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
                     </div>
                 </div>
 
-                <!-- ── Leaflet Map ── -->
+                <!-- ── Google Maps Embed ── -->
                 <div style="margin-bottom:14px;">
-                    <div id="map-detail" style="height: 250px; width: 100%; z-index: 1; border-radius:var(--radius-sm); border:1px solid var(--border); box-shadow:var(--shadow-sm);"></div>
+                    <div style="height: 250px; width: 100%; border-radius:var(--radius-sm); border:1px solid var(--border); box-shadow:var(--shadow-sm); overflow:hidden; background:#E5E7EB; position:relative;">
+                        <iframe 
+                            src="<?= htmlspecialchars($google_embed_url) ?>" 
+                            width="100%" 
+                            height="100%" 
+                            style="border:0; position:absolute; top:0; left:0; width:100%; height:100%;" 
+                            allowfullscreen="" 
+                            loading="lazy" 
+                            referrerpolicy="no-referrer-when-downgrade">
+                        </iframe>
+                    </div>
                 </div>
                 <a href="<?= htmlspecialchars($maps_url) ?>" target="_blank"
                    class="btn btn-outline" style="display:flex; width:100%; margin-bottom:12px;">
@@ -716,14 +769,6 @@ $maps_url = !empty($restaurant['maps_link']) && $restaurant['maps_link'] !== '#'
         </div>
     </div>
 </div>
-
-<!-- Leaflet JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script>
-if (typeof L === 'undefined') {
-    document.write('<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"><\/script>');
-}
-</script>
 
 <script>
 // Gallery switcher
@@ -753,19 +798,28 @@ function switchMainImg(src) {
             const sv = parseInt(s.getAttribute('data-val'));
             if (sv <= val) {
                 s.classList.add('active');
+                s.classList.remove('fa-regular');
+                s.classList.add('fa-solid');
                 s.style.color = '#fbbf24';
             } else {
                 s.classList.remove('active');
+                s.classList.remove('fa-solid');
+                s.classList.add('fa-regular');
                 s.style.color = '#d1d5db';
             }
         });
         if (starLabel) {
-            starLabel.textContent = val + ' / 5 — ' + (labels[val] || '');
-            starLabel.style.color = val >= 4 ? 'var(--clr-orange)' : (val >= 3 ? 'var(--text-secondary)' : '#ef4444');
+            if (val === 0) {
+                starLabel.textContent = "Pilih rating Anda";
+                starLabel.style.color = 'var(--text-secondary)';
+            } else {
+                starLabel.textContent = val + ' / 5 — ' + (labels[val] || '');
+                starLabel.style.color = val >= 4 ? 'var(--clr-orange)' : (val >= 3 ? 'var(--text-secondary)' : '#ef4444');
+            }
         }
     }
 
-    let current = parseInt(ratingInput.value) || 5;
+    let current = parseInt(ratingInput.value) || 0;
     setStars(current);
 
     stars.forEach(star => {
@@ -812,8 +866,11 @@ function switchMainImg(src) {
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.className = 'media-preview-remove';
+            removeBtn.title = 'Hapus gambar ini';
             removeBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
-            removeBtn.addEventListener('click', () => {
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
                 selectedFiles.splice(idx, 1);
                 syncFiles();
                 renderPreview();
@@ -824,7 +881,6 @@ function switchMainImg(src) {
     }
 
     function syncFiles() {
-        // Create a new DataTransfer to update the input's files
         const dt = new DataTransfer();
         selectedFiles.forEach(f => dt.items.add(f));
         input.files = dt.files;
@@ -835,25 +891,28 @@ function switchMainImg(src) {
         const remaining = 5 - selectedFiles.length;
         const toAdd = newFiles.slice(0, remaining);
         selectedFiles = selectedFiles.concat(toAdd);
+        syncFiles();
         if (selectedFiles.length >= 5) {
-            showToast('Maksimal 5 file dapat diunggah.', 'error');
+            if (typeof showToast === 'function') showToast('Maksimal 5 file dapat diunggah.', 'error');
         }
         renderPreview();
     });
 
     // Drag & drop
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-    zone.addEventListener('drop', e => {
-        e.preventDefault();
-        zone.classList.remove('dragover');
-        const dropped = Array.from(e.dataTransfer.files);
-        const allowed = dropped.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
-        const remaining = 5 - selectedFiles.length;
-        selectedFiles = selectedFiles.concat(allowed.slice(0, remaining));
-        syncFiles();
-        renderPreview();
-    });
+    if (zone) {
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            const dropped = Array.from(e.dataTransfer.files);
+            const allowed = dropped.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+            const remaining = 5 - selectedFiles.length;
+            selectedFiles = selectedFiles.concat(allowed.slice(0, remaining));
+            syncFiles();
+            renderPreview();
+        });
+    }
 })();
 
 // Form submit feedback
@@ -866,92 +925,117 @@ if (reviewForm && submitBtn) {
     });
 }
 
-// ── Leaflet Map Init ──────────────────────────────────────────
-function initDetailMap() {
-    const mapEl = document.getElementById('map-detail');
-    if (!mapEl || typeof L === 'undefined') return;
-    if (mapEl._leaflet_id) return; // Mencegah inisialisasi ganda
-
-    // Jika tinggi elemen masih 0 karena render layout belum selesai, tunggu sebentar
-    if (mapEl.clientHeight === 0) {
-        setTimeout(initDetailMap, 100);
-        return;
-    }
-
-    let lat  = parseFloat(<?= json_encode($map_lat) ?>) || 1.1301;
-    let lng  = parseFloat(<?= json_encode($map_lng) ?>) || 104.0529;
-
-    // Koreksi otomatis jika koordinat di database salah ketik digit longitude (misal 14.0453 -> 104.0453 atau 10.40 -> 104.0)
-    if (lng > 0 && lng < 100) lng += 90;
-    if (lng > 10 && lng < 20) lng += 90;
-
-    const name = <?= json_encode(htmlspecialchars($restaurant['name'])) ?>;
-    const addr = <?= json_encode(htmlspecialchars($restaurant['address'] ?: ($restaurant['district'] . ', Kota Batam'))) ?>;
-    const mapsUrl = <?= json_encode($maps_url) ?>;
-
-    const map = L.map('map-detail', {
-        center: [lat, lng],
-        zoom: 12,
-        scrollWheelZoom: false,
-        zoomControl: true,
-        attributionControl: true,
+async function deleteMyReview(idUlasan, restoId) {
+    const result = await Swal.fire({
+        title: 'Hapus Ulasan Ini?',
+        text: 'Apakah kamu yakin ingin menghapus ulasanmu?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus!',
+        cancelButtonText: 'Batal'
     });
 
-    // Menggunakan OpenStreetMap contributors dengan fokus wilayah Kota Batam, Kepulauan Riau, Indonesia
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
-    }).addTo(map);
+    if (result.isConfirmed) {
+        try {
+            const formData = new FormData();
+            formData.append('id_ulasan', idUlasan);
+            formData.append('restaurant_id', restoId);
 
-    const markerIcon = L.divIcon({
-        className: '',
-        html: `<div style="
-            width:36px; height:36px;
-            background:#F97316;
-            border:3px solid #FFFFFF;
-            border-radius:50% 50% 50% 0;
-            transform:rotate(-45deg);
-            box-shadow:0 3px 10px rgba(0,0,0,0.30);
-        "></div>
-        <div style="
-            position:absolute; top:50%; left:50%;
-            transform:translate(-50%,-62%) rotate(45deg);
-            color:#fff; font-size:14px; pointer-events:none;
-        ">🍴</div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 36],
-        popupAnchor: [0, -38]
-    });
+            const res = await fetch(BASE_URL + '/auth/delete-my-review.php', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
 
-    L.marker([lat, lng], { icon: markerIcon }).addTo(map)
-        .bindPopup(`<div style="min-width:140px; font-family:'Poppins',sans-serif; text-align:center; padding:2px 0;">
-            <strong style="font-size:14px; color:#1F2937; display:block; margin-bottom:6px;">${name}</strong>
-            <a href="${mapsUrl}" target="_blank" style="font-size:12.5px; color:#F97316; font-weight:600; text-decoration:underline; display:inline-block;">
-                Buka rute di Google Maps &rarr;
-            </a>
-        </div>`)
-        .openPopup();
-
-    // Pastikan ukuran kontainer dihitung ulang setelah render DOM & sticky sidebar
-    setTimeout(() => { map.invalidateSize(true); }, 300);
-    setTimeout(() => { map.invalidateSize(true); }, 800);
-    setTimeout(() => { map.invalidateSize(true); }, 1500);
-}
-
-function checkAndInitMap() {
-    if (typeof L !== 'undefined') {
-        initDetailMap();
-    } else {
-        setTimeout(checkAndInitMap, 150);
+            if (data.status === 'success') {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: data.message,
+                    confirmButtonColor: '#F97316'
+                });
+                location.reload();
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: data.message || 'Gagal menghapus ulasan.',
+                    confirmButtonColor: '#e11d48'
+                });
+            }
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Kesalahan Jaringan',
+                text: 'Tidak dapat terhubung ke server.',
+                confirmButtonColor: '#e11d48'
+            });
+        }
     }
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', checkAndInitMap);
-} else {
-    checkAndInitMap();
+function normalisasiTeks(teks) {
+    let hasil = teks.toLowerCase();
+    const petaLeet = {
+        '1': 'i', '!': 'i', '|': 'i',
+        '3': 'e',
+        '4': 'a', '@': 'a',
+        '5': 's', '$': 's',
+        '0': 'o',
+        '9': 'g',
+        '7': 't'
+    };
+    hasil = hasil.replace(/[1!|34@5$09 7]/g, c => petaLeet[c] ?? c);
+    const tanpaSpasi = hasil.replace(/[\s._\-*]+/g, '').replace(/(.)\1{2,}/g, '$1');
+    const denganSpasi = hasil.replace(/[._\-*]+/g, '').replace(/(.)\1{2,}/g, '$1');
+    return { tanpaSpasi, denganSpasi, asli: teks.toLowerCase() };
 }
-window.addEventListener('load', checkAndInitMap);
+
+function cekKataTerlarangJS(teks) {
+    const daftarKata = [
+        'anjing', 'bangsat', 'babi', 'kontol', 'memek', 'ngentot',
+        'kafir', 'lonte', 'perek', 'pelacur', 'goblok', 'idiot', 'bajingan', 'pantek'
+    ];
+    const { tanpaSpasi, denganSpasi, asli } = normalisasiTeks(teks);
+    for (const kata of daftarKata) {
+        if (asli.includes(kata) || tanpaSpasi.includes(kata) || denganSpasi.includes(kata)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const reviewForm = document.getElementById('review-form');
+    if (reviewForm) {
+        reviewForm.addEventListener('submit', (e) => {
+            const ratingInput = document.getElementById('review-rating');
+            if (ratingInput && (parseInt(ratingInput.value) || 0) === 0) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Rating Belum Dipilih',
+                    text: 'Harap berikan penilaian bintang sebelum mengirimkan ulasan.',
+                    confirmButtonColor: '#fbbf24'
+                });
+                return;
+            }
+
+            const commentInput = reviewForm.querySelector('textarea[name="comment"]');
+            if (commentInput && cekKataTerlarangJS(commentInput.value)) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Ulasan Gagal Dikirim',
+                    text: 'Komentar tidak layak atau mengandung unsur SARA / kata kotor.',
+                    confirmButtonColor: '#e11d48'
+                });
+            }
+        });
+    }
+});
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>

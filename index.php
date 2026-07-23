@@ -7,11 +7,31 @@ if (!empty($restaurants) && is_array($restaurants)) {
         return ($b['rating'] ?? 0) <=> ($a['rating'] ?? 0);
     });
 }
-$top_4 = array_slice($restaurants, 0, 4);
+
+
+// Rekomendasi terbaik kustom: 1. Golden Prawn 555 (ID 2), 2. Tsania Seafood (ID 64), 3. Gerai Nelayan 2M (ID 41), 4. Lempah Kuning (ID 38)
+$target_ids = [2, 64, 41, 38];
+$top_4 = [];
+foreach ($target_ids as $tid) {
+    foreach ($restaurants as $r) {
+        if ($r['id'] == $tid) {
+            $top_4[] = $r;
+            break;
+        }
+    }
+}
+if (count($top_4) < 4) {
+    foreach ($restaurants as $r) {
+        if (!in_array($r, $top_4)) {
+            $top_4[] = $r;
+            if (count($top_4) == 4) break;
+        }
+    }
+}
 $total_restaurants = count($restaurants);
 $all_districts = array_filter(array_unique(array_column($restaurants, 'district')));
 sort($all_districts);
-$all_reviews = read_json('reviews.json');
+$all_reviews = get_reviews();
 
 // User favorites for card icons
 $user_fav_ids = get_user_fav_ids();
@@ -24,33 +44,9 @@ $user_fav_ids = get_user_fav_ids();
         <h1 style="color:#FFFFFF; font-size:clamp(2rem,5vw,3rem); font-weight:800; margin-bottom:16px; text-shadow:0 2px 10px rgba(0,0,0,0.3); letter-spacing:-0.025em; line-height:1.1;">
             Temukan Seafood Terbaik Batam!
         </h1>
-        <p style="color:rgba(255,255,255,0.88); font-size:1rem; margin-bottom:32px; max-width:560px; margin-left:auto; margin-right:auto; line-height:1.65;">
+        <p style="color:rgba(255,255,255,0.88); font-size:1rem; margin-bottom:0; max-width:560px; margin-left:auto; margin-right:auto; line-height:1.65;">
             Direktori restoran seafood terlengkap di Batam — temukan kepiting, udang, ikan bakar, dan sajian laut terbaik di satu tempat.
         </p>
-        <!-- Search bar pill -->
-        <form action="<?= BASE_URL ?>/restaurants.php" method="GET" 
-              style="display:flex; max-width:700px; margin:0 auto; background:#FFFFFF; border-radius:50px; overflow:visible; box-shadow:0 8px 32px rgba(0,0,0,0.20); padding:5px 5px 5px 22px; align-items:center; gap:0;">
-            <i class="fa-solid fa-magnifying-glass" style="color:#9CA3AF; font-size:0.9rem; flex-shrink:0; margin-right:10px;"></i>
-            <input type="text" name="q" placeholder="Cari restoran, masakan..." 
-                   style="flex:1; border:none; outline:none; font-family:'Poppins',sans-serif; font-size:0.9rem; color:#111; background:transparent; padding:7px 0; min-width:0;">
-            
-            <!-- Divider -->
-            <div style="width:1px; height:26px; background:#E5E7EB; flex-shrink:0; margin:0 10px;"></div>
-
-            <!-- District select -->
-            <select name="district"
-                    style="appearance:none; -webkit-appearance:none; border:none; outline:none; background:transparent; color:#374151; font-family:'Poppins',sans-serif; font-size:0.85rem; font-weight:500; padding:7px 28px 7px 8px; cursor:pointer; background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\"); background-repeat:no-repeat; background-position:right 8px center; min-width:150px;">
-                <option value="">Semua Kecamatan</option>
-                <?php foreach($all_districts as $d): ?>
-                    <option value="<?= htmlspecialchars($d) ?>"><?= htmlspecialchars($d) ?></option>
-                <?php endforeach; ?>
-            </select>
-
-            <button type="submit" class="btn btn-primary" 
-                    style="border-radius:50px; padding:10px 26px; font-size:0.88rem; flex-shrink:0; margin-left:6px;">
-                Cari
-            </button>
-        </form>
     </div>
 </section>
 
@@ -96,8 +92,9 @@ $user_fav_ids = get_user_fav_ids();
         <div style="position:relative;">
             <a href="<?= BASE_URL ?>/restaurant-detail.php?id=<?= $r['id'] ?>" class="card" style="display:block;">
                 <div class="card-img-wrap">
-                    <img src="<?= htmlspecialchars($r['photos'][0] ?? 'https://images.unsplash.com/photo-1565557623262-b51c2513a641') ?>"
-                         alt="<?= htmlspecialchars($r['name']) ?>" class="card-img">
+                    <img src="<?= htmlspecialchars(!empty($r['foto_utama']) ? $r['foto_utama'] : ($r['photos'][0] ?? 'https://images.unsplash.com/photo-1565557623262-b51c2513a641')) ?>"
+                         alt="<?= htmlspecialchars($r['name']) ?>" class="card-img"
+                         referrerpolicy="no-referrer">
                     <div class="card-badge">
                         <i class="fa-solid fa-star" style="color:#fbbf24; margin-right:2px;"></i>
                         <?= $r['rating'] ?>
@@ -115,7 +112,6 @@ $user_fav_ids = get_user_fav_ids();
                     </div>
                 </div>
             </a>
-            <?php if (is_logged_in()): ?>
             <button onclick="event.stopPropagation(); toggleFavorite(<?= $r['id'] ?>);"
                     data-fav-id="<?= $r['id'] ?>"
                     title="<?= $is_fav ? 'Hapus favorit' : 'Simpan favorit' ?>"
@@ -124,7 +120,6 @@ $user_fav_ids = get_user_fav_ids();
                     onmouseout="this.style.transform='scale(1)'">
                 <i class="fa-<?= $is_fav?'solid':'regular' ?> fa-heart" style="color:<?= $is_fav?'#ef4444':'#aaa' ?>; font-size:0.85rem; pointer-events:none;"></i>
             </button>
-            <?php endif; ?>
         </div>
         <?php endforeach; ?>
     </div>
